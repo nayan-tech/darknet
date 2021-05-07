@@ -740,6 +740,7 @@ typedef struct network {
     int max_batches;
     int num_boxes;
     int train_images_num;
+    int earlyStopThresh;
     float *seq_scales;
     float *scales;
     int   *steps;

@@ -1141,6 +1141,7 @@ learning_rate_policy get_policy(char *s)
 
 void parse_net_options(list *options, network *net)
 {
+    net->earlyStopThresh = option_find_int(options, "early_stop", INT_MAX);
     net->max_batches = option_find_int(options, "max_batches", 0);
     net->batch = option_find_int(options, "batch",1);
     net->learning_rate = option_find_float(options, "learning_rate", .001);
