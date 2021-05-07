@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <limits.h>
 #include "darknet.h"
 #include "network.h"
 #include "region_layer.h"
@@ -164,7 +165,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 #ifdef OPENCV
     //int num_threads = get_num_threads();
     //if(num_threads > 2) args.threads = get_num_threads() - 2;
-    args.threads = 6 * ngpus;   // 3 for - Amazon EC2 Tesla V100: p3.2xlarge (8 logical cores) - p3.16xlarge
+    args.threads = 8 * ngpus;   // 3 for - Amazon EC2 Tesla V100: p3.2xlarge (8 logical cores) - p3.16xlarge
     //args.threads = 12 * ngpus;    // Ryzen 7 2700X (16 logical cores)
     mat_cv* img = NULL;
     float max_img_loss = net.max_chart_loss;
@@ -189,6 +190,8 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 
     int count = 0;
     double time_remaining, avg_time = -1, alpha_time = 0.01;
+    int nCount_epoch = 0;
+    double nprevLoss = DBL_MAX;
 
     //while(i*imgs < N*120){
     while (get_current_iteration(net) < net.max_batches) {
@@ -294,6 +297,12 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 #endif
         if (avg_loss < 0 || avg_loss != avg_loss) avg_loss = loss;    // if(-inf or nan)
         avg_loss = avg_loss*.9 + loss*.1;
+
+        double improvement = nprevLoss - loss;
+        if((get_current_iteration(net) > 1000) && (improvement < 0.001))
+            ++nCount_epoch;
+        else
+            nCount_epoch = 0;
 
         const int iteration = get_current_iteration(net);
         //i = get_current_batch(net);
@@ -410,6 +419,11 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             }
         }
         free_data(train);
+
+        if(nCount_epoch > 500) {
+            printf(" ----- Early Stopping Activated ---- \n");
+            break;
+        }
     }
 #ifdef GPU
     if (ngpus != 1) sync_nets(nets, ngpus, 0);
