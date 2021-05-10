@@ -298,6 +298,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
         if (avg_loss < 0 || avg_loss != avg_loss) avg_loss = loss;    // if(-inf or nan)
         avg_loss = avg_loss*.9 + loss*.1;
 
+        //early stopping implementation
         double improvement = nprevLoss - avg_loss;
         if((get_current_iteration(net) > 1000) && (improvement < 0.001))
             ++nCount_epoch;
@@ -419,10 +420,16 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             }
         }
         free_data(train);
-        nprevLoss = avg_loss; //update prev loss values
+
+        //update prev loss values
+        if (avg_loss < nprevLoss)
+        {
+            nprevLoss = avg_loss;
+        }
+//        nprevLoss = avg_loss; //update prev loss values
 
         if(nCount_epoch > net.earlyStopThresh) {
-            printf(" ----- Early Stopping Activated ---- \n");
+            printf(" ----- Early Stopping Activated @ Early thresh %d ---- \n",net.earlyStopThresh);
             break;
         }
     }
